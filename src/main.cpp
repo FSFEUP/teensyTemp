@@ -13,19 +13,19 @@ Adafruit_MCP3008 ADCs[8];
 #define N_ADCs 8
 #define N_ADC_CHANNELS 8
 
-#define BMS_CAN_PERIOD 250
-#define BROADCAST_PERIOD 2504
+// #define BMS_CAN_PERIOD 250
+// #define BROADCAST_PERIOD 250
 #define BROADCAST_ID 0x301
 
 CAN_message_t BMSInfoMsg;
 CAN_message_t tempBroadcast;
 
+
+// elapsedMillis timeSinceLastBroadcast = 0;
+// elapsedMillis timeSinceLastBMSMessage = 0;
+
 int broadcastIndex = 0;
-
-elapsedMillis timeSinceLastBroadcast = 0;
-elapsedMillis timeSinceLastBMSMessage = 0;
-
-int flag = 0;
+int broadcastEnabled = 0;
 int count = 0;
 
 float read = 0;
@@ -41,27 +41,22 @@ float rawSum = 0.0;
 float AvgRaw = 0.0;
 
 float ADCRaw[8][8] = {
-    {0, 0, 0, 0, 0, 0, 0, 0},  // seg8
-    {0, 0, 0, 0, 0, 0, 0, 0},  // seg7
-    {0, 0, 0, 0, 0, 0, 0, 0},  // seg6
-    {0, 0, 0, 0, 0, 0, 0, 0},  // seg5
-    {0, 0, 0, 0, 0, 0, 0, 0},  // seg4
-    {0, 0, 0, 0, 0, 0, 0, 0},  // seg3
-    {0, 0, 0, 0, 0, 0, 0, 0},  // seg2
-    {0, 0, 0, 0, 0, 0, 0, 0}   // seg1
-};
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0}};
 
 float ADCconversion(float read) {
     voltage = (read * Reference / 1024.0);
-
     voltage2 = voltage * voltage;
-
     voltage3 = voltage2 * voltage;
-
     voltage4 = voltage3 * voltage;
 
     temperature = 2875.88397 - 5512.867802 * voltage + 4082.002758 * voltage2 - 1358.200746 * voltage3 + 168.841073 * voltage4;
-
     return temperature;
 }
 
@@ -80,9 +75,9 @@ void readRawADCData() {
     AvgRaw = rawSum / (N_ADCs * N_ADC_CHANNELS - 4);  // Only 60 ADC Channels are usable
 }
 
-void CAN_msg() {
-    if (timeSinceLastBroadcast < BROADCAST_PERIOD)
-        return;
+void broadcastRawData() {
+    // if (timeSinceLastBroadcast < BROADCAST_PERIOD)
+    //     return;
 
     tempBroadcast.id = BROADCAST_ID + broadcastIndex;  // para decidir
     tempBroadcast.len = N_ADC_CHANNELS + 1;
@@ -93,10 +88,7 @@ void CAN_msg() {
     broadcastIndex = (broadcastIndex + 1) % N_ADCs;
 }
 
-void BMS_msg() {
-    if (timeSinceLastBMSMessage < BMS_CAN_PERIOD)
-        return;
-
+void sendTempsToBMS() {
     uint8_t minTemp = (uint8_t)ADCconversion(minRaw);
     uint8_t maxTemp = (uint8_t)ADCconversion(maxRaw);
     uint8_t avgTemp = (uint8_t)ADCconversion(AvgRaw);
@@ -121,8 +113,9 @@ void canbusSniffer(const CAN_message_t& msg) {
         Serial.print("Message ID: ");
         Serial.println(msg.id, HEX);
     }
+
     if (msg.id == 0x300)
-        flag = 1;
+        broadcastEnabled = 1;
 }
 
 void setup() {
@@ -157,5 +150,9 @@ void loop() {
     maxRaw = 0;
     minRaw = 999;
 
-    BMS_msg();
+    readRawADCData();
+    broadcastRawData();
+    sendTempsToBMS();
+
+    delay(100);
 }

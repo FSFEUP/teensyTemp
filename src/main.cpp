@@ -19,7 +19,7 @@ Adafruit_MCP3008 ADCs[8];
 
 CAN_message_t BMSInfoMsg;
 CAN_message_t tempBroadcast;
-
+CAN_message_t msg_1;
 
 // elapsedMillis timeSinceLastBroadcast = 0;
 // elapsedMillis timeSinceLastBMSMessage = 0;
@@ -29,18 +29,18 @@ int broadcastEnabled = 0;
 int count = 0;
 
 float read = 0;
-float voltage = 0;
-float voltage1 = 0;
-float voltage2 = 0;
-float voltage3 = 0;
-float voltage4 = 0;
-float temperature = 0.0;
+double voltage = 0;
+double voltage1 = 0;
+double voltage2 = 0;
+double voltage3 = 0;
+double voltage4 = 0;
+double temperature = 0.0;
 float maxRaw = 0.0;
 float minRaw = 60.0;
 float rawSum = 0.0;
 float AvgRaw = 0.0;
 
-float ADCRaw[8][8] = {
+int ADCRaw[8][8] = {
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
@@ -50,8 +50,8 @@ float ADCRaw[8][8] = {
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0}};
 
-float ADCconversion(float read) {
-    voltage = (read * Reference / 1024.0);
+double ADCconversion(int raw) {
+    voltage = (raw * Reference) / 1024.0;
     voltage2 = voltage * voltage;
     voltage3 = voltage2 * voltage;
     voltage4 = voltage3 * voltage;
@@ -66,7 +66,22 @@ void readRawADCData() {
         for (int channel = 0; channel < N_ADC_CHANNELS; channel++) {
             if (adc == 7 && channel > 3)
                 continue;
-            ADCRaw[adc][channel] = ADCs[adc].readADC(channel);
+            int tempID = adc * 8 + channel;
+            switch (tempID) {
+                case 10:
+                case 17:
+                case 28:
+                case 29:
+                case 31:
+                case 32:
+                case 45:
+                case 53:
+                    ADCRaw[adc][channel] = ADCRaw[1][1];
+                    break;
+                default:
+                    ADCRaw[adc][channel] = ADCs[adc].readADC(channel);
+                    break;
+            }
             minRaw = min(minRaw, ADCRaw[adc][channel]);
             maxRaw = max(maxRaw, ADCRaw[adc][channel]);
             rawSum += ADCRaw[adc][channel];
@@ -76,9 +91,6 @@ void readRawADCData() {
 }
 
 void broadcastRawData() {
-    // if (timeSinceLastBroadcast < BROADCAST_PERIOD)
-    //     return;
-
     tempBroadcast.id = BROADCAST_ID + broadcastIndex;  // para decidir
     tempBroadcast.len = N_ADC_CHANNELS + 1;
     for (int i = 0; i < N_ADCs; i++)
@@ -86,6 +98,98 @@ void broadcastRawData() {
 
     can1.write(tempBroadcast);
     broadcastIndex = (broadcastIndex + 1) % N_ADCs;
+}
+
+void CAN_msg() {
+    msg_1.id = 0x301;  // para decidir
+    msg_1.len = 8;
+
+    msg_1.buf[0] = 0;
+    msg_1.buf[1] = (uint8_t)ADCconversion(ADCRaw[0][0]);
+    msg_1.buf[2] = (uint8_t)ADCconversion(ADCRaw[0][1]);
+    msg_1.buf[3] = (uint8_t)ADCconversion(ADCRaw[0][2]);
+    msg_1.buf[4] = (uint8_t)ADCconversion(ADCRaw[0][3]);
+    msg_1.buf[5] = (uint8_t)ADCconversion(ADCRaw[0][4]);
+    msg_1.buf[6] = (uint8_t)ADCconversion(ADCRaw[0][5]);
+    msg_1.buf[7] = (uint8_t)ADCconversion(ADCRaw[0][6]);
+    can1.write(msg_1);
+
+    msg_1.buf[0] = 1;
+    msg_1.buf[1] = (uint8_t)ADCconversion(ADCRaw[0][7]);
+    msg_1.buf[2] = (uint8_t)ADCconversion(ADCRaw[1][0]);
+    msg_1.buf[3] = (uint8_t)ADCconversion(ADCRaw[1][1]);
+    msg_1.buf[4] = (uint8_t)ADCconversion(ADCRaw[1][2]);
+    msg_1.buf[5] = (uint8_t)ADCconversion(ADCRaw[1][3]);
+    msg_1.buf[6] = (uint8_t)ADCconversion(ADCRaw[1][4]);
+    msg_1.buf[7] = (uint8_t)ADCconversion(ADCRaw[1][5]);
+    can1.write(msg_1);
+
+    msg_1.buf[0] = 2;
+    msg_1.buf[1] = (uint8_t)ADCconversion(ADCRaw[1][6]);
+    msg_1.buf[2] = (uint8_t)ADCconversion(ADCRaw[1][7]);
+    msg_1.buf[3] = (uint8_t)ADCconversion(ADCRaw[2][0]);
+    msg_1.buf[4] = (uint8_t)ADCconversion(ADCRaw[2][1]);
+    msg_1.buf[5] = (uint8_t)ADCconversion(ADCRaw[2][2]);
+    msg_1.buf[6] = (uint8_t)ADCconversion(ADCRaw[2][3]);
+    msg_1.buf[7] = (uint8_t)ADCconversion(ADCRaw[2][4]);
+    can1.write(msg_1);
+
+    msg_1.buf[0] = 3;
+    msg_1.buf[1] = (uint8_t)ADCconversion(ADCRaw[2][5]);
+    msg_1.buf[2] = (uint8_t)ADCconversion(ADCRaw[2][6]);
+    msg_1.buf[3] = (uint8_t)ADCconversion(ADCRaw[2][7]);
+    msg_1.buf[4] = (uint8_t)ADCconversion(ADCRaw[3][0]);
+    msg_1.buf[5] = (uint8_t)ADCconversion(ADCRaw[3][1]);
+    msg_1.buf[6] = (uint8_t)ADCconversion(ADCRaw[3][2]);
+    msg_1.buf[7] = (uint8_t)ADCconversion(ADCRaw[3][3]);
+    can1.write(msg_1);
+
+    msg_1.buf[0] = 4;
+    msg_1.buf[1] = (uint8_t)ADCconversion(ADCRaw[3][4]);
+    msg_1.buf[2] = (uint8_t)ADCconversion(ADCRaw[3][5]);
+    msg_1.buf[3] = (uint8_t)ADCconversion(ADCRaw[3][6]);
+    msg_1.buf[4] = (uint8_t)ADCconversion(ADCRaw[3][7]);
+    msg_1.buf[5] = (uint8_t)ADCconversion(ADCRaw[4][0]);
+    msg_1.buf[6] = (uint8_t)ADCconversion(ADCRaw[4][1]);
+    msg_1.buf[7] = (uint8_t)ADCconversion(ADCRaw[4][2]);
+    can1.write(msg_1);
+
+    msg_1.buf[0] = 5;
+    msg_1.buf[1] = (uint8_t)ADCconversion(ADCRaw[4][3]);
+    msg_1.buf[2] = (uint8_t)ADCconversion(ADCRaw[4][4]);
+    msg_1.buf[3] = (uint8_t)ADCconversion(ADCRaw[4][5]);
+    msg_1.buf[4] = (uint8_t)ADCconversion(ADCRaw[4][6]);
+    msg_1.buf[5] = (uint8_t)ADCconversion(ADCRaw[4][7]);
+    msg_1.buf[6] = (uint8_t)ADCconversion(ADCRaw[5][0]);
+    msg_1.buf[7] = (uint8_t)ADCconversion(ADCRaw[5][1]);
+    can1.write(msg_1);
+
+    msg_1.buf[0] = 6;
+    msg_1.buf[1] = (uint8_t)ADCconversion(ADCRaw[5][2]);
+    msg_1.buf[2] = (uint8_t)ADCconversion(ADCRaw[5][3]);
+    msg_1.buf[3] = (uint8_t)ADCconversion(ADCRaw[5][4]);
+    msg_1.buf[4] = (uint8_t)ADCconversion(ADCRaw[5][5]);
+    msg_1.buf[5] = (uint8_t)ADCconversion(ADCRaw[5][6]);
+    msg_1.buf[6] = (uint8_t)ADCconversion(ADCRaw[5][7]);
+    msg_1.buf[7] = (uint8_t)ADCconversion(ADCRaw[6][0]);
+    can1.write(msg_1);
+
+    msg_1.buf[0] = 7;
+    msg_1.buf[1] = (uint8_t)ADCconversion(ADCRaw[6][1]);
+    msg_1.buf[2] = (uint8_t)ADCconversion(ADCRaw[6][2]);
+    msg_1.buf[3] = (uint8_t)ADCconversion(ADCRaw[6][3]);
+    msg_1.buf[4] = (uint8_t)ADCconversion(ADCRaw[6][4]);
+    msg_1.buf[5] = (uint8_t)ADCconversion(ADCRaw[6][5]);
+    msg_1.buf[6] = (uint8_t)ADCconversion(ADCRaw[6][6]);
+    msg_1.buf[7] = (uint8_t)ADCconversion(ADCRaw[6][7]);
+    can1.write(msg_1);
+
+    msg_1.buf[0] = 8;
+    msg_1.buf[1] = (uint8_t)ADCconversion(ADCRaw[7][0]);
+    msg_1.buf[2] = (uint8_t)ADCconversion(ADCRaw[7][1]);
+    msg_1.buf[3] = (uint8_t)ADCconversion(ADCRaw[7][2]);
+    msg_1.buf[4] = (uint8_t)ADCconversion(ADCRaw[7][3]);
+    can1.write(msg_1);
 }
 
 void sendTempsToBMS() {
@@ -144,6 +248,14 @@ void setup() {
     (void)ADCs[7].begin(13, 11, 12, 7);
 }
 
+void printTemp() {
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            Serial.printf("ADC %d raw data: %d temp: %f\n", (i * 8) + j, ADCRaw[i][j], ADCconversion(ADCRaw[i][j]));
+        }
+    }
+}
+
 void loop() {
     // reset measurements
     rawSum = 0;
@@ -151,8 +263,11 @@ void loop() {
     minRaw = 999;
 
     readRawADCData();
-    broadcastRawData();
+    // broadcastRawData();
+    CAN_msg();
     sendTempsToBMS();
+    if (Serial)
+        printTemp();
 
-    delay(100);
+    delay(50);
 }

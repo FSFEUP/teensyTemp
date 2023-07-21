@@ -74,6 +74,7 @@ void readRawADCData() {
                 case 29:
                 case 31:
                 case 32:
+                case 39:
                 case 45:
                 case 53:
                     ADCRaw[adc][channel] = ADCRaw[1][1];

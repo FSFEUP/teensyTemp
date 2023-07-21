@@ -35,10 +35,10 @@ float voltage2 = 0;
 float voltage3 = 0;
 float voltage4 = 0;
 float temperature = 0.0;
-float maxTemp = 0.0;
-float minTemp = 60.0;
-float TempSum = 0.0;
-float AvgTemp = 0.0;
+float maxRaw = 0.0;
+float minRaw = 60.0;
+float rawSum = 0.0;
+float AvgRaw = 0.0;
 
 float ADCRaw[8][8] = {
     {0, 0, 0, 0, 0, 0, 0, 0},  // seg8
@@ -72,11 +72,12 @@ void readRawADCData() {
             if (adc == 7 && channel > 3)
                 continue;
             ADCRaw[adc][channel] = ADCs[adc].readADC(channel);
-            minTemp = min(minTemp, ADCRaw[adc][channel]);
-            maxTemp = max(maxTemp, ADCRaw[adc][channel]);
-            TempSum += ADCRaw[adc][channel];
+            minRaw = min(minRaw, ADCRaw[adc][channel]);
+            maxRaw = max(maxRaw, ADCRaw[adc][channel]);
+            rawSum += ADCRaw[adc][channel];
         }
     }
+    AvgRaw = rawSum / (N_ADCs * N_ADC_CHANNELS - 4);  // Only 60 ADC Channels are usable
 }
 
 void CAN_msg() {
@@ -86,9 +87,8 @@ void CAN_msg() {
     tempBroadcast.id = BROADCAST_ID;  // para decidir
     tempBroadcast.len = N_ADC_CHANNELS + 1;
     tempBroadcast.buf[0] = broadcastIndex;
-    for (int i = 0; i < N_ADCs; i++) {
+    for (int i = 0; i < N_ADCs; i++)
         tempBroadcast.buf[i + 1] = (uint8_t)ADCRaw[broadcastIndex][i];
-    }
 
     can1.write(tempBroadcast);
     broadcastIndex = (broadcastIndex + 1) % N_ADCs;
@@ -98,14 +98,17 @@ void BMS_msg() {
     if (timeSinceLastBMSMessage < BMS_CAN_PERIOD)
         return;
 
-    AvgTemp = TempSum / 60;
+    uint8_t minTemp = (uint8_t)ADCconversion(minRaw);
+    uint8_t maxTemp = (uint8_t)ADCconversion(maxRaw);
+    uint8_t avgTemp = (uint8_t)ADCconversion(AvgRaw);
+
     BMSInfoMsg.id = 0x1839F380;
     BMSInfoMsg.flags.extended = 1;
     BMSInfoMsg.len = 8;
     BMSInfoMsg.buf[0] = 0x00;
-    BMSInfoMsg.buf[1] = (uint8_t)minTemp;
-    BMSInfoMsg.buf[2] = (uint8_t)maxTemp;
-    BMSInfoMsg.buf[3] = (uint8_t)AvgTemp;
+    BMSInfoMsg.buf[1] = minTemp > 58 ? 60 : minTemp;  // 60 is maximum allowed temperature before
+    BMSInfoMsg.buf[2] = maxTemp > 58 ? 60 : maxTemp;  // triggering an error on the BMS
+    BMSInfoMsg.buf[3] = avgTemp > 58 ? 60 : avgTemp;
     BMSInfoMsg.buf[4] = 0x01;
     BMSInfoMsg.buf[5] = 0x01;
     BMSInfoMsg.buf[6] = 0x00;
@@ -151,9 +154,9 @@ void setup() {
 
 void loop() {
     // reset measurements
-    TempSum = 0;
-    maxTemp = 0;
-    minTemp = 999;
+    rawSum = 0;
+    maxRaw = 0;
+    minRaw = 999;
 
     BMS_msg();
 }

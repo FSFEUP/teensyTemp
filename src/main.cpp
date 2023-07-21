@@ -84,11 +84,10 @@ void CAN_msg() {
     if (timeSinceLastBroadcast < BROADCAST_PERIOD)
         return;
 
-    tempBroadcast.id = BROADCAST_ID;  // para decidir
+    tempBroadcast.id = BROADCAST_ID + broadcastIndex;  // para decidir
     tempBroadcast.len = N_ADC_CHANNELS + 1;
-    tempBroadcast.buf[0] = broadcastIndex;
     for (int i = 0; i < N_ADCs; i++)
-        tempBroadcast.buf[i + 1] = (uint8_t)ADCRaw[broadcastIndex][i];
+        tempBroadcast.buf[i] = (uint8_t)ADCRaw[broadcastIndex][i];
 
     can1.write(tempBroadcast);
     broadcastIndex = (broadcastIndex + 1) % N_ADCs;

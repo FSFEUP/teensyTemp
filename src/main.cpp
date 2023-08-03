@@ -2,9 +2,8 @@
 #include <FlexCAN_T4.h>
 #include <Wire.h>
 
-//FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1;
+// FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1;
 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1;
-
 
 Adafruit_MCP3008 ADCs[8];
 
@@ -146,11 +145,10 @@ void readRawADCData() {
             bufferInsert(rawDataBuffer[adc][channel], ADCs[adc].readADC(channel));
             ADCRaw[adc][channel] = bufferAvg(rawDataBuffer[adc][channel]);
             Temps[adc][channel] = ADCconversion(ADCRaw[adc][channel]);
-            if (Temps[adc][channel] > 70 || Temps[adc][channel] < 0)
-            {
+            if (Temps[adc][channel] > 70 || Temps[adc][channel] < 0) {
                 setupADCs();
                 continue;
-            }else
+            } else
                 TimeTemp[adc][channel] = millis();
 
             minRaw = min(minRaw, ADCRaw[adc][channel]);
@@ -523,7 +521,6 @@ void temp2bms() {
     can1.write(BMSInfoMsg);
 }
 
-
 void setup() {
     // try to connect to the serial monitor
     Serial.begin(9600);
@@ -559,23 +556,6 @@ void setup() {
 
 void doReboot() {
     SCB_AIRCR = 0x05FA0004;  // https://forum.pjrc.com/threads/67680-T4-1-software-reset
-    /*
-    setupADCs();
-    resetTimer = millis();
-    for (int adc = 0; adc < N_ADCs; adc++) {
-        for (int channel = 0; channel < N_ADC_CHANNELS; channel++) {
-                ADCRaw[adc][channel] = 0;
-                Temps[adc][channel] = 0;
-                TimeTemp[adc][channel] = 0;
-            }
-        }
-
-    for (int i = 0; i < N_SAMPLES; i++){
-            minTempBuffer[i] = 25;
-            maxTempBuffer[i] = 25;
-            avgTempBuffer[i] = 25;
-        }
-    */
 }
 
 void loop() {

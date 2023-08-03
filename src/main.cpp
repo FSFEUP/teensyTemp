@@ -2,7 +2,9 @@
 #include <FlexCAN_T4.h>
 #include <Wire.h>
 
+//FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1;
 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1;
+
 
 Adafruit_MCP3008 ADCs[8];
 
@@ -101,6 +103,17 @@ float bufferAvg(float dataVector[]) {
     return sum / N_SAMPLES;
 }
 
+void setupADCs() {
+    (void)ADCs[0].begin(13, 11, 12, 18);
+    (void)ADCs[1].begin(13, 11, 12, 19);
+    (void)ADCs[2].begin(13, 11, 12, 20);
+    (void)ADCs[3].begin(13, 11, 12, 21);
+    (void)ADCs[4].begin(13, 11, 12, 4);
+    (void)ADCs[5].begin(13, 11, 12, 5);
+    (void)ADCs[6].begin(13, 11, 12, 6);
+    (void)ADCs[7].begin(13, 11, 12, 7);
+}
+
 double ADCconversion(int raw) {
     voltage = (raw * Reference) / 1024.0;
     voltage2 = voltage * voltage;
@@ -134,9 +147,12 @@ void readRawADCData() {
             ADCRaw[adc][channel] = bufferAvg(rawDataBuffer[adc][channel]);
             Temps[adc][channel] = ADCconversion(ADCRaw[adc][channel]);
             if (Temps[adc][channel] > 70 || Temps[adc][channel] < 0)
+            {
+                setupADCs();
                 continue;
-            else
+            }else
                 TimeTemp[adc][channel] = millis();
+
             minRaw = min(minRaw, ADCRaw[adc][channel]);
             maxRaw = max(maxRaw, ADCRaw[adc][channel]);
             rawSum += ADCRaw[adc][channel];
@@ -507,16 +523,6 @@ void temp2bms() {
     can1.write(BMSInfoMsg);
 }
 
-void setupADCs() {
-    (void)ADCs[0].begin(13, 11, 12, 18);
-    (void)ADCs[1].begin(13, 11, 12, 19);
-    (void)ADCs[2].begin(13, 11, 12, 20);
-    (void)ADCs[3].begin(13, 11, 12, 21);
-    (void)ADCs[4].begin(13, 11, 12, 4);
-    (void)ADCs[5].begin(13, 11, 12, 5);
-    (void)ADCs[6].begin(13, 11, 12, 6);
-    (void)ADCs[7].begin(13, 11, 12, 7);
-}
 
 void setup() {
     // try to connect to the serial monitor
@@ -574,9 +580,9 @@ void doReboot() {
 
 void loop() {
     // reset ADCs and stored data every 10s
-    if (millis() - resetTimer > 10000) {
-        doReboot();
-    }
+    // if (millis() - resetTimer > 10000) {
+    //     doReboot();
+    // }
 
     // reset measurements
     rawSum = 0;

@@ -84,6 +84,8 @@ float Temps[8][8] = {
     {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
     {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
 
+float rawDataBuffer[8][8][N_SAMPLES];
+
 void bufferInsert(float dataVector[], float data) {
     for (int i = 0; i < N_SAMPLES - 1; i++) {
         dataVector[i] = dataVector[i + 1];
@@ -126,7 +128,10 @@ void readRawADCData() {
                 continue;
             if (adc == 4 && channel == 1)  // this termistor is disconnected
                 continue;
-            ADCRaw[adc][channel] = ADCs[adc].readADC(channel);
+
+            // ADCRaw[adc][channel] = ADCs[adc].readADC(channel); // old
+            bufferInsert(rawDataBuffer[adc][channel], ADCs[adc].readADC(channel));
+            ADCRaw[adc][channel] = bufferAvg(rawDataBuffer[adc][channel]);
             Temps[adc][channel] = ADCconversion(ADCRaw[adc][channel]);
             if (Temps[adc][channel] > 70 || Temps[adc][channel] < 0)
                 continue;
@@ -469,16 +474,16 @@ void temp2bms() {
 
     avgTemp = sumTemp / 57.0;
 
-    //Insert new values on the respective mooving average buffers
+    // Insert new values on the respective mooving average buffers
     bufferInsert(minTempBuffer, minTemp);
     bufferInsert(maxTempBuffer, maxTemp);
     bufferInsert(avgTempBuffer, avgTemp);
 
-    //Calculate the average of the buffers
+    // Calculate the average of the buffers
     minTemp = bufferAvg(minTempBuffer);
     maxTemp = bufferAvg(maxTempBuffer);
     avgTemp = bufferAvg(avgTempBuffer);
-    
+
     // error msg
     BMSInfoMsg.id = 0x306;
     BMSInfoMsg.flags.extended = 1;
@@ -536,10 +541,18 @@ void setup() {
     BMSInfoMsg.len = 1;
     BMSInfoMsg.buf[0] = 0;
     can1.write(BMSInfoMsg);
+
+    for (int adc = 0; adc < N_ADCs; adc++) {
+        for (int channel = 0; channel < N_ADC_CHANNELS; channel++) {
+            for (int i = 0; i < N_SAMPLES; i++) {
+                rawDataBuffer[adc][channel][i] = 780;  // 780 is the value of 25ºC
+            }
+        }
+    }
 }
 
 void doReboot() {
-    SCB_AIRCR = 0x05FA0004; // https://forum.pjrc.com/threads/67680-T4-1-software-reset
+    SCB_AIRCR = 0x05FA0004;  // https://forum.pjrc.com/threads/67680-T4-1-software-reset
     /*
     setupADCs();
     resetTimer = millis();
@@ -550,7 +563,7 @@ void doReboot() {
                 TimeTemp[adc][channel] = 0;
             }
         }
-        
+
     for (int i = 0; i < N_SAMPLES; i++){
             minTempBuffer[i] = 25;
             maxTempBuffer[i] = 25;
@@ -561,18 +574,14 @@ void doReboot() {
 
 void loop() {
     // reset ADCs and stored data every 10s
-    if(millis() - resetTimer > 10000){
+    if (millis() - resetTimer > 10000) {
         doReboot();
     }
 
     // reset measurements
     rawSum = 0;
     maxRaw = 0;
-    minRaw = 9999;                                                                                                                                                                                                     
-
-    //maxTemp = 0.0;
-    //minTemp = 60.0;
-    //sumTemp = 0.0;
+    minRaw = 9999;
 
     readRawADCData();
     temp2Handcart();

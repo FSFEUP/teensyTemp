@@ -456,6 +456,8 @@ void printshow() {
     Serial.printf("______________________________________________");
     Serial.printf("______________________________________________");
     Serial.printf("_____________________________________________\n");
+
+    Serial.printf("BMS Error: %d\t Temp Error: %d\n", BMSErr ,TempErr);
 }
 
 void temp2bms() {
@@ -468,12 +470,12 @@ void temp2bms() {
         for (int channel = 0; channel < N_ADC_CHANNELS; channel++) {
             if (adc == 7 && channel > 3)
                 continue;  // these thermistors do not exist
-            if (adc == 3 && channel == 5)
+            if (adc == 3 && channel == 4)
                 continue;  // this termistor is not working
-            if (adc == 2 && channel == 2)
-                continue;  // this termistor is not working
-            if (adc == 4 && channel == 1)
-                continue;  // this termistor is not working
+            // if (adc == 2 && channel == 2)
+            // continue;  // this termistor is not working
+            // if (adc == 4 && channel == 1)
+            // continue;  // this termistor is not working
             if ((millis() - TimeTemp[adc][channel]) > ERROR_TIME) {
                 TempErr = 1;
                 maxTemp = 70.0;  // se a bms receber esta temp vai dar erro

@@ -46,6 +46,14 @@ float minTemp = 60.0;
 float sumTemp = 0.0;
 float avgTemp = 0.0;
 
+#define N_SAMPLES 10
+
+float maxTempBuffer[N_SAMPLES] = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
+float minTempBuffer[N_SAMPLES] = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
+float avgTempBuffer[N_SAMPLES] = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
+
+long resetTimer = 0;
+
 int ADCRaw[8][8] = {
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
@@ -75,6 +83,21 @@ float Temps[8][8] = {
     {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
     {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
     {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
+
+void bufferInsert(float dataVector[], float data) {
+    for (int i = 0; i < N_SAMPLES - 1; i++) {
+        dataVector[i] = dataVector[i + 1];
+    }
+    dataVector[N_SAMPLES - 1] = data;
+}
+
+float bufferAvg(float dataVector[]) {
+    float sum = 0.0;
+    for (int i = 0; i < N_SAMPLES; i++) {
+        sum += dataVector[i];
+    }
+    return sum / N_SAMPLES;
+}
 
 double ADCconversion(int raw) {
     voltage = (raw * Reference) / 1024.0;
@@ -420,7 +443,6 @@ void temp2bms() {
     // calcular max min e avg
     // verificar se alguma celula está disconectada por mais de 700ms
     // envia mensagem de erro
-
     TempErr = 0;
 
     for (int adc = 0; adc < N_ADCs; adc++) {
@@ -445,8 +467,18 @@ void temp2bms() {
         }
     }
 
-    avgTemp = sumTemp / 58;
+    avgTemp = sumTemp / 57.0;
 
+    //Insert new values on the respective mooving average buffers
+    bufferInsert(minTempBuffer, minTemp);
+    bufferInsert(maxTempBuffer, maxTemp);
+    bufferInsert(avgTempBuffer, avgTemp);
+
+    //Calculate the average of the buffers
+    minTemp = bufferAvg(minTempBuffer);
+    maxTemp = bufferAvg(maxTempBuffer);
+    avgTemp = bufferAvg(avgTempBuffer);
+    
     // error msg
     BMSInfoMsg.id = 0x306;
     BMSInfoMsg.flags.extended = 1;
@@ -506,16 +538,41 @@ void setup() {
     can1.write(BMSInfoMsg);
 }
 
+void doReboot() {
+    SCB_AIRCR = 0x05FA0004; // https://forum.pjrc.com/threads/67680-T4-1-software-reset
+    /*
+    setupADCs();
+    resetTimer = millis();
+    for (int adc = 0; adc < N_ADCs; adc++) {
+        for (int channel = 0; channel < N_ADC_CHANNELS; channel++) {
+                ADCRaw[adc][channel] = 0;
+                Temps[adc][channel] = 0;
+                TimeTemp[adc][channel] = 0;
+            }
+        }
+        
+    for (int i = 0; i < N_SAMPLES; i++){
+            minTempBuffer[i] = 25;
+            maxTempBuffer[i] = 25;
+            avgTempBuffer[i] = 25;
+        }
+    */
+}
+
 void loop() {
+    // reset ADCs and stored data every 10s
+    if(millis() - resetTimer > 10000){
+        doReboot();
+    }
+
     // reset measurements
     rawSum = 0;
     maxRaw = 0;
-    minRaw = 999;
+    minRaw = 9999;                                                                                                                                                                                                     
 
-    maxTemp = 0.0;
-    minTemp = 60.0;
-    sumTemp = 0.0;
-    avgTemp = 0.0;
+    //maxTemp = 0.0;
+    //minTemp = 60.0;
+    //sumTemp = 0.0;
 
     readRawADCData();
     temp2Handcart();

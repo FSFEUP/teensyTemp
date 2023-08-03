@@ -545,7 +545,7 @@ void setup() {
     for (int adc = 0; adc < N_ADCs; adc++) {
         for (int channel = 0; channel < N_ADC_CHANNELS; channel++) {
             for (int i = 0; i < N_SAMPLES; i++) {
-                rawDataBuffer[adc][channel][i] = 780;  // 780 is the value of 25ºC
+                rawDataBuffer[adc][channel][i] = 763;  // 763 is the value of 25ºC
             }
         }
     }

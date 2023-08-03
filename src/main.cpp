@@ -68,16 +68,9 @@ void readRawADCData() {
                 continue;
             int tempID = adc * 8 + channel;
             switch (tempID) {
-                case 3:
-                case 10:
-                case 17:
-                case 28:
+                case 18:
                 case 29:
-                case 31:
-                case 32:
-                case 39:
-                case 45:
-                case 53:
+                case 33:
                     ADCRaw[adc][channel] = ADCRaw[1][1];
                     break;
                 default:

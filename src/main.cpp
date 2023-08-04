@@ -140,6 +140,8 @@ void readRawADCData() {
                 continue;
             if (adc == 4 && channel == 1)  // this termistor is disconnected
                 continue;
+            if (adc == 0 && channel == 1)
+                continue;
 
             // ADCRaw[adc][channel] = ADCs[adc].readADC(channel); // old
             bufferInsert(rawDataBuffer[adc][channel], ADCs[adc].readADC(channel));
@@ -158,16 +160,6 @@ void readRawADCData() {
     }
     AvgRaw = rawSum / (N_ADCs * N_ADC_CHANNELS - 4);  // Only 60 out of 64 ADC Channels are usable
 }
-
-/* void broadcastRawData() {
-    tempBroadcast.id = BROADCAST_ID + broadcastIndex;  // para decidir
-    tempBroadcast.len = N_ADC_CHANNELS + 1;
-    for (int i = 0; i < N_ADCs; i++)
-        tempBroadcast.buf[i] = (uint8_t)ADCRaw[broadcastIndex][i];
-
-    can1.write(tempBroadcast);
-    broadcastIndex = (broadcastIndex + 1) % N_ADCs;
-}*/
 
 void temp2Handcart() {
     msg_1.id = 0x301;  // para decidir
@@ -271,89 +263,80 @@ void canbusSniffer(const CAN_message_t& msg) {
 }
 
 void printdebug() {
-    /*
     Serial.printf("--Segmento 1--\n");
-    Serial.printf("Cell 1:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[6][2],((ADCRaw[6][2] * Reference) / 1024.0),ADCconversion(ADCRaw[6][2]));
-    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[6][3],((ADCRaw[6][3] * Reference) / 1024.0),ADCconversion(ADCRaw[6][3]));
-    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[6][4],((ADCRaw[6][4] * Reference) / 1024.0),ADCconversion(ADCRaw[6][4]));
-    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[6][5],((ADCRaw[6][5] * Reference) / 1024.0),ADCconversion(ADCRaw[6][5]));
-    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[6][6],((ADCRaw[6][6] * Reference) / 1024.0),ADCconversion(ADCRaw[6][6]));
-    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[6][7],((ADCRaw[6][7] * Reference) / 1024.0),ADCconversion(ADCRaw[6][7]));
-    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[7][0],((ADCRaw[7][0] * Reference) / 1024.0),ADCconversion(ADCRaw[7][0]));
-    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[7][1],((ADCRaw[7][1] * Reference) / 1024.0),ADCconversion(ADCRaw[7][1]));
-    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[7][2],((ADCRaw[7][2] * Reference) / 1024.0),ADCconversion(ADCRaw[7][2]));
-    Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[7][3],((ADCRaw[7][3] * Reference) / 1024.0),ADCconversion(ADCRaw[7][3]));
-    */
+    Serial.printf("Cell 1:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[6][2], ((ADCRaw[6][2] * Reference) / 1024.0), ADCconversion(ADCRaw[6][2]));
+    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[6][3], ((ADCRaw[6][3] * Reference) / 1024.0), ADCconversion(ADCRaw[6][3]));
+    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[6][4], ((ADCRaw[6][4] * Reference) / 1024.0), ADCconversion(ADCRaw[6][4]));
+    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[6][5], ((ADCRaw[6][5] * Reference) / 1024.0), ADCconversion(ADCRaw[6][5]));
+    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[6][6], ((ADCRaw[6][6] * Reference) / 1024.0), ADCconversion(ADCRaw[6][6]));
+    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[6][7], ((ADCRaw[6][7] * Reference) / 1024.0), ADCconversion(ADCRaw[6][7]));
+    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[7][0], ((ADCRaw[7][0] * Reference) / 1024.0), ADCconversion(ADCRaw[7][0]));
+    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[7][1], ((ADCRaw[7][1] * Reference) / 1024.0), ADCconversion(ADCRaw[7][1]));
+    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[7][2], ((ADCRaw[7][2] * Reference) / 1024.0), ADCconversion(ADCRaw[7][2]));
+    Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[7][3], ((ADCRaw[7][3] * Reference) / 1024.0), ADCconversion(ADCRaw[7][3]));
 
-    /*
     Serial.printf("--Segmento 2--\n");
-    Serial.printf("Cell 1: Bit= %d  | Voltage= %.2f | Temp=%.2f \n",ADCRaw[5][0],((ADCRaw[5][0] * Reference) / 1024.0),ADCconversion(ADCRaw[5][0]));
-    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[5][1],((ADCRaw[5][1] * Reference) / 1024.0),ADCconversion(ADCRaw[5][1]));
-    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[5][2],((ADCRaw[5][2] * Reference) / 1024.0),ADCconversion(ADCRaw[5][2]));
-    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[5][3],((ADCRaw[5][3] * Reference) / 1024.0),ADCconversion(ADCRaw[5][3]));
-    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[5][4],((ADCRaw[5][4] * Reference) / 1024.0),ADCconversion(ADCRaw[5][4]));
-    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[5][5],((ADCRaw[5][5] * Reference) / 1024.0),ADCconversion(ADCRaw[5][5]));
-    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[5][6],((ADCRaw[5][6] * Reference) / 1024.0),ADCconversion(ADCRaw[5][6]));
-    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[5][7],((ADCRaw[5][7] * Reference) / 1024.0),ADCconversion(ADCRaw[5][7]));
-    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[6][0],((ADCRaw[6][0] * Reference) / 1024.0),ADCconversion(ADCRaw[6][0]));
-    Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[6][1],((ADCRaw[6][1] * Reference) / 1024.0),ADCconversion(ADCRaw[6][1]));
-    */
+    Serial.printf("Cell 1: Bit= %d  | Voltage= %.2f | Temp=%.2f \n", ADCRaw[5][0], ((ADCRaw[5][0] * Reference) / 1024.0), ADCconversion(ADCRaw[5][0]));
+    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[5][1], ((ADCRaw[5][1] * Reference) / 1024.0), ADCconversion(ADCRaw[5][1]));
+    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[5][2], ((ADCRaw[5][2] * Reference) / 1024.0), ADCconversion(ADCRaw[5][2]));
+    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[5][3], ((ADCRaw[5][3] * Reference) / 1024.0), ADCconversion(ADCRaw[5][3]));
+    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[5][4], ((ADCRaw[5][4] * Reference) / 1024.0), ADCconversion(ADCRaw[5][4]));
+    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[5][5], ((ADCRaw[5][5] * Reference) / 1024.0), ADCconversion(ADCRaw[5][5]));
+    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[5][6], ((ADCRaw[5][6] * Reference) / 1024.0), ADCconversion(ADCRaw[5][6]));
+    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[5][7], ((ADCRaw[5][7] * Reference) / 1024.0), ADCconversion(ADCRaw[5][7]));
+    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[6][0], ((ADCRaw[6][0] * Reference) / 1024.0), ADCconversion(ADCRaw[6][0]));
+    Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[6][1], ((ADCRaw[6][1] * Reference) / 1024.0), ADCconversion(ADCRaw[6][1]));
 
-    /*
     Serial.printf("--Segmento 3--\n");
-    Serial.printf("Cell 1:  Bit= %d  | Voltage= %.2f | Temp=%.2f \n",ADCRaw[3][6],((ADCRaw[3][6] * Reference) / 1024.0),ADCconversion(ADCRaw[3][6]));
-    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[3][7],((ADCRaw[3][7] * Reference) / 1024.0),ADCconversion(ADCRaw[3][7]));
-    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[4][0],((ADCRaw[4][0] * Reference) / 1024.0),ADCconversion(ADCRaw[4][0]));
-    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[4][1],((ADCRaw[4][1] * Reference) / 1024.0),ADCconversion(ADCRaw[4][1]));
-    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[4][2],((ADCRaw[4][2] * Reference) / 1024.0),ADCconversion(ADCRaw[4][2]));
-    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[4][3],((ADCRaw[4][3] * Reference) / 1024.0),ADCconversion(ADCRaw[4][3]));
-    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[4][4],((ADCRaw[4][4] * Reference) / 1024.0),ADCconversion(ADCRaw[4][4]));
-    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[4][5],((ADCRaw[4][5] * Reference) / 1024.0),ADCconversion(ADCRaw[4][5]));
-    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[4][6],((ADCRaw[4][6] * Reference) / 1024.0),ADCconversion(ADCRaw[4][6]));
-    Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[4][7],((ADCRaw[4][7] * Reference) / 1024.0),ADCconversion(ADCRaw[4][7]));
-    */
+    Serial.printf("Cell 1:  Bit= %d  | Voltage= %.2f | Temp=%.2f \n", ADCRaw[3][6], ((ADCRaw[3][6] * Reference) / 1024.0), ADCconversion(ADCRaw[3][6]));
+    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[3][7], ((ADCRaw[3][7] * Reference) / 1024.0), ADCconversion(ADCRaw[3][7]));
+    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[4][0], ((ADCRaw[4][0] * Reference) / 1024.0), ADCconversion(ADCRaw[4][0]));
+    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[4][1], ((ADCRaw[4][1] * Reference) / 1024.0), ADCconversion(ADCRaw[4][1]));
+    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[4][2], ((ADCRaw[4][2] * Reference) / 1024.0), ADCconversion(ADCRaw[4][2]));
+    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[4][3], ((ADCRaw[4][3] * Reference) / 1024.0), ADCconversion(ADCRaw[4][3]));
+    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[4][4], ((ADCRaw[4][4] * Reference) / 1024.0), ADCconversion(ADCRaw[4][4]));
+    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[4][5], ((ADCRaw[4][5] * Reference) / 1024.0), ADCconversion(ADCRaw[4][5]));
+    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[4][6], ((ADCRaw[4][6] * Reference) / 1024.0), ADCconversion(ADCRaw[4][6]));
+    Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[4][7], ((ADCRaw[4][7] * Reference) / 1024.0), ADCconversion(ADCRaw[4][7]));
 
-    /*
     Serial.printf("--Segmento 4--\n");
-    Serial.printf("Cell 1:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[2][4],((ADCRaw[2][4] * Reference) / 1024.0),ADCconversion(ADCRaw[2][4]));
-    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[2][5],((ADCRaw[2][5] * Reference) / 1024.0),ADCconversion(ADCRaw[2][5]));
-    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[2][6],((ADCRaw[2][6] * Reference) / 1024.0),ADCconversion(ADCRaw[2][6]));
-    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[2][7],((ADCRaw[2][7] * Reference) / 1024.0),ADCconversion(ADCRaw[2][7]));
-    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[3][0],((ADCRaw[3][0] * Reference) / 1024.0),ADCconversion(ADCRaw[3][0]));
-    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[3][1],((ADCRaw[3][1] * Reference) / 1024.0),ADCconversion(ADCRaw[3][1]));
-    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[3][2],((ADCRaw[3][2] * Reference) / 1024.0),ADCconversion(ADCRaw[3][2]));
-    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[3][3],((ADCRaw[3][3] * Reference) / 1024.0),ADCconversion(ADCRaw[3][3]));
-    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[3][4],((ADCRaw[3][4] * Reference) / 1024.0),ADCconversion(ADCRaw[3][4]));
-    //Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[3][5],((ADCRaw[3][5] * Reference) / 1024.0),ADCconversion(ADCRaw[3][5]));
+    Serial.printf("Cell 1:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[2][4], ((ADCRaw[2][4] * Reference) / 1024.0), ADCconversion(ADCRaw[2][4]));
+    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[2][5], ((ADCRaw[2][5] * Reference) / 1024.0), ADCconversion(ADCRaw[2][5]));
+    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[2][6], ((ADCRaw[2][6] * Reference) / 1024.0), ADCconversion(ADCRaw[2][6]));
+    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[2][7], ((ADCRaw[2][7] * Reference) / 1024.0), ADCconversion(ADCRaw[2][7]));
+    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[3][0], ((ADCRaw[3][0] * Reference) / 1024.0), ADCconversion(ADCRaw[3][0]));
+    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[3][1], ((ADCRaw[3][1] * Reference) / 1024.0), ADCconversion(ADCRaw[3][1]));
+    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[3][2], ((ADCRaw[3][2] * Reference) / 1024.0), ADCconversion(ADCRaw[3][2]));
+    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[3][3], ((ADCRaw[3][3] * Reference) / 1024.0), ADCconversion(ADCRaw[3][3]));
+    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[3][4], ((ADCRaw[3][4] * Reference) / 1024.0), ADCconversion(ADCRaw[3][4]));
+    // Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[3][5],((ADCRaw[3][5] * Reference) / 1024.0),ADCconversion(ADCRaw[3][5]));
     Serial.printf("Cell 10: thermistor turned off\n");
-    */
 
-    /*
     Serial.printf("--Segmento 5--\n");
-    Serial.printf("Cell 1: Bit= %d  | Voltage= %.2f | Temp=%.2f \n",ADCRaw[1][2],((ADCRaw[1][2] * Reference) / 1024.0),ADCconversion(ADCRaw[1][2]));
-    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[1][3],((ADCRaw[1][3] * Reference) / 1024.0),ADCconversion(ADCRaw[1][3]));
-    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[1][4],((ADCRaw[1][4] * Reference) / 1024.0),ADCconversion(ADCRaw[1][4]));
-    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[1][5],((ADCRaw[1][5] * Reference) / 1024.0),ADCconversion(ADCRaw[1][5]));
-    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[1][6],((ADCRaw[1][6] * Reference) / 1024.0),ADCconversion(ADCRaw[1][6]));
-    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[1][7],((ADCRaw[1][7] * Reference) / 1024.0),ADCconversion(ADCRaw[1][7]));
-    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[2][0],((ADCRaw[2][0] * Reference) / 1024.0),ADCconversion(ADCRaw[2][0]));
-    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[2][1],((ADCRaw[2][1] * Reference) / 1024.0),ADCconversion(ADCRaw[2][1]));
-    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[2][2],((ADCRaw[2][2] * Reference) / 1024.0),ADCconversion(ADCRaw[2][2]));
-    Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[2][3],((ADCRaw[2][3] * Reference) / 1024.0),ADCconversion(ADCRaw[2][3]));
-    */
-    /*
+    Serial.printf("Cell 1: Bit= %d  | Voltage= %.2f | Temp=%.2f \n", ADCRaw[1][2], ((ADCRaw[1][2] * Reference) / 1024.0), ADCconversion(ADCRaw[1][2]));
+    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[1][3], ((ADCRaw[1][3] * Reference) / 1024.0), ADCconversion(ADCRaw[1][3]));
+    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[1][4], ((ADCRaw[1][4] * Reference) / 1024.0), ADCconversion(ADCRaw[1][4]));
+    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[1][5], ((ADCRaw[1][5] * Reference) / 1024.0), ADCconversion(ADCRaw[1][5]));
+    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[1][6], ((ADCRaw[1][6] * Reference) / 1024.0), ADCconversion(ADCRaw[1][6]));
+    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[1][7], ((ADCRaw[1][7] * Reference) / 1024.0), ADCconversion(ADCRaw[1][7]));
+    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[2][0], ((ADCRaw[2][0] * Reference) / 1024.0), ADCconversion(ADCRaw[2][0]));
+    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[2][1], ((ADCRaw[2][1] * Reference) / 1024.0), ADCconversion(ADCRaw[2][1]));
+    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[2][2], ((ADCRaw[2][2] * Reference) / 1024.0), ADCconversion(ADCRaw[2][2]));
+    Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[2][3], ((ADCRaw[2][3] * Reference) / 1024.0), ADCconversion(ADCRaw[2][3]));
+
     Serial.printf("--Segmento 6--\n");
-    Serial.printf("Cell 1:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[0][0],((ADCRaw[0][0] * Reference) / 1024.0),ADCconversion(ADCRaw[0][0]));
-    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[0][1],((ADCRaw[0][1] * Reference) / 1024.0),ADCconversion(ADCRaw[0][1]));
-    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[0][2],((ADCRaw[0][2] * Reference) / 1024.0),ADCconversion(ADCRaw[0][2]));
-    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[0][3],((ADCRaw[0][3] * Reference) / 1024.0),ADCconversion(ADCRaw[0][3]));
-    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[0][4],((ADCRaw[0][4] * Reference) / 1024.0),ADCconversion(ADCRaw[0][4]));
-    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[0][5],((ADCRaw[0][5] * Reference) / 1024.0),ADCconversion(ADCRaw[0][5]));
-    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[0][6],((ADCRaw[0][6] * Reference) / 1024.0),ADCconversion(ADCRaw[0][6]));
-    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[0][7],((ADCRaw[0][7] * Reference) / 1024.0),ADCconversion(ADCRaw[0][7]));
-    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[1][0],((ADCRaw[1][0] * Reference) / 1024.0),ADCconversion(ADCRaw[1][0]));
-    Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n",ADCRaw[1][1],((ADCRaw[1][1] * Reference) / 1024.0),ADCconversion(ADCRaw[1][1]));
-    */
+    Serial.printf("Cell 1:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[0][0], ((ADCRaw[0][0] * Reference) / 1024.0), ADCconversion(ADCRaw[0][0]));
+    Serial.printf("Cell 2:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[0][1], ((ADCRaw[0][1] * Reference) / 1024.0), ADCconversion(ADCRaw[0][1]));
+    Serial.printf("Cell 3:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[0][2], ((ADCRaw[0][2] * Reference) / 1024.0), ADCconversion(ADCRaw[0][2]));
+    Serial.printf("Cell 4:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[0][3], ((ADCRaw[0][3] * Reference) / 1024.0), ADCconversion(ADCRaw[0][3]));
+    Serial.printf("Cell 5:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[0][4], ((ADCRaw[0][4] * Reference) / 1024.0), ADCconversion(ADCRaw[0][4]));
+    Serial.printf("Cell 6:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[0][5], ((ADCRaw[0][5] * Reference) / 1024.0), ADCconversion(ADCRaw[0][5]));
+    Serial.printf("Cell 7:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[0][6], ((ADCRaw[0][6] * Reference) / 1024.0), ADCconversion(ADCRaw[0][6]));
+    Serial.printf("Cell 8:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[0][7], ((ADCRaw[0][7] * Reference) / 1024.0), ADCconversion(ADCRaw[0][7]));
+    Serial.printf("Cell 9:  Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[1][0], ((ADCRaw[1][0] * Reference) / 1024.0), ADCconversion(ADCRaw[1][0]));
+    Serial.printf("Cell 10: Bit= %d | Voltage= %.2f | Temp=%.2f \n", ADCRaw[1][1], ((ADCRaw[1][1] * Reference) / 1024.0), ADCconversion(ADCRaw[1][1]));
+
+    Serial.printf("BMS Error: %d\t Temp Error: %d\n", BMSErr, TempErr);
 }
 
 void printshow() {
@@ -457,7 +440,7 @@ void printshow() {
     Serial.printf("______________________________________________");
     Serial.printf("_____________________________________________\n");
 
-    Serial.printf("BMS Error: %d\t Temp Error: %d\n", BMSErr ,TempErr);
+    Serial.printf("BMS Error: %d\t Temp Error: %d\n", BMSErr, TempErr);
 }
 
 void temp2bms() {
@@ -469,13 +452,16 @@ void temp2bms() {
     for (int adc = 0; adc < N_ADCs; adc++) {
         for (int channel = 0; channel < N_ADC_CHANNELS; channel++) {
             if (adc == 7 && channel > 3)
-                continue;  // these thermistors do not exist
-            if (adc == 3 && channel == 4)
-                continue;  // this termistor is not working
-            // if (adc == 2 && channel == 2)
-            // continue;  // this termistor is not working
-            // if (adc == 4 && channel == 1)
-            // continue;  // this termistor is not working
+                continue;
+            if (adc == 3 && channel == 5)  // this termistor is disconnected
+                continue;
+            if (adc == 2 && channel == 2)  // this termistor is disconnected
+                continue;
+            if (adc == 4 && channel == 1)  // this termistor is disconnected
+                continue;
+            if (adc == 0 && channel == 1)
+                continue;
+
             if ((millis() - TimeTemp[adc][channel]) > ERROR_TIME) {
                 TempErr = 1;
                 maxTemp = 70.0;  // se a bms receber esta temp vai dar erro
@@ -504,7 +490,8 @@ void temp2bms() {
     BMSInfoMsg.id = 0x306;
     BMSInfoMsg.flags.extended = 1;
     BMSInfoMsg.len = 1;
-    BMSInfoMsg.buf[0] = (BMSErr || TempErr);  // flags a BMS error on the CAN bus
+    BMSInfoMsg.buf[0] = 0;
+    // BMSInfoMsg.buf[0] = (BMSErr || TempErr);  // flags a BMS error on the CAN bus
     can1.write(BMSInfoMsg);
 
     // Env msg temps value para a BMS
@@ -561,11 +548,6 @@ void doReboot() {
 }
 
 void loop() {
-    // reset ADCs and stored data every 10s
-    // if (millis() - resetTimer > 10000) {
-    //     doReboot();
-    // }
-
     // reset measurements
     rawSum = 0;
     maxRaw = 0;
@@ -576,7 +558,8 @@ void loop() {
     temp2bms();
 
     if (Serial)
-        printshow();
+        printdebug();
+    // printshow();
 
     delay(50);
 }

@@ -37,21 +37,21 @@ double voltage3 = 0;
 double voltage4 = 0;
 double temperature = 0.0;
 
-float maxRaw = 0.0;
-float minRaw = 60.0;
-float rawSum = 0.0;
-float AvgRaw = 0.0;
+// float maxRaw = 0.0;
+// float minRaw = 60.0;
+// float rawSum = 0.0;
+// float AvgRaw = 0.0;
 
 float maxTemp = 0.0;
 float minTemp = 60.0;
 float sumTemp = 0.0;
 float avgTemp = 0.0;
 
-#define N_SAMPLES 10
+#define N_SAMPLES 8
 
-float maxTempBuffer[N_SAMPLES] = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
-float minTempBuffer[N_SAMPLES] = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
-float avgTempBuffer[N_SAMPLES] = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
+// float maxTempBuffer[N_SAMPLES] = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
+// float minTempBuffer[N_SAMPLES] = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
+// float avgTempBuffer[N_SAMPLES] = {25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0};
 
 long resetTimer = 0;
 
@@ -147,18 +147,21 @@ void readRawADCData() {
             bufferInsert(rawDataBuffer[adc][channel], ADCs[adc].readADC(channel));
             ADCRaw[adc][channel] = bufferAvg(rawDataBuffer[adc][channel]);
             Temps[adc][channel] = ADCconversion(ADCRaw[adc][channel]);
+
             if (Temps[adc][channel] > 70 || Temps[adc][channel] < 0) {
+                Serial.print("ResetADCs\t");
                 setupADCs();
+                Serial.println("Done!");
                 continue;
             } else
                 TimeTemp[adc][channel] = millis();
 
-            minRaw = min(minRaw, ADCRaw[adc][channel]);
-            maxRaw = max(maxRaw, ADCRaw[adc][channel]);
-            rawSum += ADCRaw[adc][channel];
+            // minRaw = min(minRaw, ADCRaw[adc][channel]);
+            // maxRaw = max(maxRaw, ADCRaw[adc][channel]);
+            // rawSum += ADCRaw[adc][channel];
         }
     }
-    AvgRaw = rawSum / (N_ADCs * N_ADC_CHANNELS - 4);  // Only 60 out of 64 ADC Channels are usable
+    // AvgRaw = rawSum / (N_ADCs * N_ADC_CHANNELS - 4);  // Only 60 out of 64 ADC Channels are usable
 }
 
 void temp2Handcart() {
@@ -254,9 +257,6 @@ void temp2Handcart() {
 }
 
 void canbusSniffer(const CAN_message_t& msg) {
-    if (msg.id == 0x300)
-        broadcastEnabled = 1;
-
     if (msg.id == 0x270) {
         BMSErr = msg.buf[0];  // atualiza flag erro BMS
     }
@@ -341,9 +341,9 @@ void printdebug() {
 
 void printshow() {
     Serial.printf("\t\t\t\t\t\t\t  Stats\n");
-    Serial.printf("\t\t\t  Max temperature : %.2fºC | ", ADCconversion(minRaw));
-    Serial.printf("Min temperature : %.2fºC | ", ADCconversion(maxRaw));
-    Serial.printf("Avg temperature : %.2fºC\n", ADCconversion(AvgRaw));
+    Serial.printf("\t\t\t  Max temperature : %.2fºC | ", maxTemp);
+    Serial.printf("Min temperature : %.2fºC | ", minTemp);
+    Serial.printf("Avg temperature : %.2fºC\n", avgTemp);
     Serial.printf("______________________________________________");
     Serial.printf("______________________________________________");
     Serial.printf("_____________________________________________\n");
@@ -448,6 +448,7 @@ void temp2bms() {
     // verificar se alguma celula está disconectada por mais de 700ms
     // envia mensagem de erro
     TempErr = 0;
+    sumTemp = 0;
 
     for (int adc = 0; adc < N_ADCs; adc++) {
         for (int channel = 0; channel < N_ADC_CHANNELS; channel++) {
@@ -462,7 +463,9 @@ void temp2bms() {
             if (adc == 0 && channel == 1)
                 continue;
 
+            // Serial.println("Reading TimeTemp time: %d", (millis() - TimeTemp[adc][channel]));
             if ((millis() - TimeTemp[adc][channel]) > ERROR_TIME) {
+                Serial.println("## ERROR reading TimeTemp!");
                 TempErr = 1;
                 maxTemp = 70.0;  // se a bms receber esta temp vai dar erro
                 break;
@@ -474,24 +477,13 @@ void temp2bms() {
         }
     }
 
-    avgTemp = sumTemp / 57.0;
-
-    // Insert new values on the respective mooving average buffers
-    bufferInsert(minTempBuffer, minTemp);
-    bufferInsert(maxTempBuffer, maxTemp);
-    bufferInsert(avgTempBuffer, avgTemp);
-
-    // Calculate the average of the buffers
-    minTemp = bufferAvg(minTempBuffer);
-    maxTemp = bufferAvg(maxTempBuffer);
-    avgTemp = bufferAvg(avgTempBuffer);
+    avgTemp = sumTemp / 56.0;
 
     // error msg
     BMSInfoMsg.id = 0x306;
     BMSInfoMsg.flags.extended = 1;
     BMSInfoMsg.len = 1;
-    BMSInfoMsg.buf[0] = 0;
-    // BMSInfoMsg.buf[0] = (BMSErr || TempErr);  // flags a BMS error on the CAN bus
+    BMSInfoMsg.buf[0] = (BMSErr || TempErr);  // flags a BMS error on the CAN bus
     can1.write(BMSInfoMsg);
 
     // Env msg temps value para a BMS
@@ -523,7 +515,6 @@ void setup() {
     can1.enableFIFOInterrupt();
     can1.onReceive(canbusSniffer);
     can1.setFIFOFilter(REJECT_ALL);
-    (void)can1.setFIFOFilter(0, 0x111, STD);
     (void)can1.setFIFOFilter(1, 0x270, STD);  // BMS MPO3 status msg id
 
     setupADCs();
@@ -543,23 +534,22 @@ void setup() {
     }
 }
 
-void doReboot() {
-    SCB_AIRCR = 0x05FA0004;  // https://forum.pjrc.com/threads/67680-T4-1-software-reset
-}
-
 void loop() {
     // reset measurements
-    rawSum = 0;
-    maxRaw = 0;
-    minRaw = 9999;
+    // rawSum = 0;
+    // maxRaw = 0;
+    // minRaw = 9999;
 
+    // Serial.println("read ADC");
     readRawADCData();
+    // Serial.println("temp2HC");
     temp2Handcart();
+    // Serial.println("temp2BMS");
     temp2bms();
 
     if (Serial)
-        printdebug();
-    // printshow();
-
+        printshow();
+    // printdebug();
+    // Serial.print("Hello World");
     delay(50);
 }

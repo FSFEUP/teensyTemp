@@ -17,7 +17,10 @@ Adafruit_MCP3008 ADCs[8];
 // #define BROADCAST_PERIOD 250
 #define BROADCAST_ID 0x301
 
+elapsedMillis tempErrorTimer;
+
 CAN_message_t BMSInfoMsg;
+CAN_message_t BMSErrorFlag;
 CAN_message_t tempBroadcast;
 CAN_message_t msg_1;
 
@@ -35,12 +38,25 @@ double voltage2 = 0;
 double voltage3 = 0;
 double voltage4 = 0;
 double temperature = 0.0;
-float maxRaw = 0.0;
-float minRaw = 60.0;
-float rawSum = 0.0;
-float AvgRaw = 0.0;
+float maxTemp = 0.0;
+float minTemp = 60.0;
+float tempSum = 0.0;
+float avgTemp = 0.0;
+
+volatile bool BMSErr = 0;
+volatile bool tempErr = 0;
 
 int ADCRaw[8][8] = {
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0}};
+
+float Temps[8][8] = {
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
@@ -77,12 +93,14 @@ void readRawADCData() {
                     ADCRaw[adc][channel] = ADCs[adc].readADC(channel);
                     break;
             }
-            minRaw = min(minRaw, ADCRaw[adc][channel]);
-            maxRaw = max(maxRaw, ADCRaw[adc][channel]);
-            rawSum += ADCRaw[adc][channel];
+            Temps[adc][channel] = ADCconversion(ADCRaw[adc][channel]);
+
+            minTemp = min(minTemp, Temps[adc][channel]);
+            maxTemp = max(maxTemp, Temps[adc][channel]);
+            tempSum += Temps[adc][channel];
         }
     }
-    AvgRaw = rawSum / (N_ADCs * N_ADC_CHANNELS - 4);  // Only 60 ADC Channels are usable
+    avgTemp = tempSum / (N_ADCs * N_ADC_CHANNELS - 4);  // Only 60 ADC Channels are usable
 }
 
 void broadcastRawData() {
@@ -188,33 +206,45 @@ void CAN_msg() {
 }
 
 void sendTempsToBMS() {
-    uint8_t minTemp = (uint8_t)ADCconversion(minRaw);
-    uint8_t maxTemp = (uint8_t)ADCconversion(maxRaw);
-    uint8_t avgTemp = (uint8_t)ADCconversion(AvgRaw);
+    if (minTemp > 0 or maxTemp < 58)
+        tempErrorTimer = 0;
+
+    if (tempErrorTimer >= 700)
+        tempErr = 1;
 
     BMSInfoMsg.id = 0x1839F380;
     BMSInfoMsg.flags.extended = 1;
     BMSInfoMsg.len = 8;
     BMSInfoMsg.buf[0] = 0x00;
-    BMSInfoMsg.buf[1] = minTemp > 58 ? 60 : minTemp;  // 60 is maximum allowed temperature before
-    BMSInfoMsg.buf[2] = maxTemp > 58 ? 60 : maxTemp;  // triggering an error on the BMS
-    BMSInfoMsg.buf[3] = avgTemp > 58 ? 60 : avgTemp;
+    BMSInfoMsg.buf[1] = minTemp;  // 60 is maximum allowed temperature before
+    BMSInfoMsg.buf[2] = maxTemp;  // triggering an error on the BMS
+    BMSInfoMsg.buf[3] = avgTemp;
     BMSInfoMsg.buf[4] = 0x01;
     BMSInfoMsg.buf[5] = 0x01;
     BMSInfoMsg.buf[6] = 0x00;
     BMSInfoMsg.buf[7] = BMSInfoMsg.buf[1] + BMSInfoMsg.buf[2] + BMSInfoMsg.buf[3] + BMSInfoMsg.buf[4] + BMSInfoMsg.buf[5] + BMSInfoMsg.buf[6] + 0x39 + 0x08;
     can1.write(BMSInfoMsg);
+
+    BMSErrorFlag.id = 0x306;
+    BMSErrorFlag.flags.extended = 1;
+    BMSErrorFlag.len = 1;
+    BMSErrorFlag.buf[0] = (BMSErr || tempErr);
+    can1.write(BMSErrorFlag);
 }
 
 void canbusSniffer(const CAN_message_t& msg) {
-    if (Serial) {
-        Serial.println("CAN message received");
-        Serial.print("Message ID: ");
-        Serial.println(msg.id, HEX);
-    }
+    // if (Serial) {
+    //     Serial.println("CAN message received");
+    //     Serial.print("Message ID: ");
+    //     Serial.println(msg.id, HEX);
+    // }
 
     if (msg.id == 0x300)
         broadcastEnabled = 1;
+
+    if (msg.id == 0x270) {
+        BMSErr = msg.buf[0];  // atualiza flag erro BMS
+    }
 }
 
 void setup() {
@@ -249,13 +279,15 @@ void printTemp() {
             Serial.printf("ADC %d raw data: %d temp: %f\n", (i * 8) + j, ADCRaw[i][j], ADCconversion(ADCRaw[i][j]));
         }
     }
+    Serial.printf("BMS Error: %d\n", BMSErr);
+    Serial.printf("Temp Error: %d\n", tempErr);
 }
 
 void loop() {
     // reset measurements
-    rawSum = 0;
-    maxRaw = 0;
-    minRaw = 999;
+    tempSum = 0;
+    maxTemp = 0;
+    minTemp = 999;
 
     readRawADCData();
     // broadcastRawData();

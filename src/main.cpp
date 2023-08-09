@@ -150,7 +150,7 @@ void readRawADCData() {
 
             if (Temps[adc][channel] > 70 || Temps[adc][channel] < 0) {
                 Serial.print("ResetADCs\t");
-                setupADCs();
+                // setupADCs();
                 Serial.println("Done!");
                 continue;
             } else
@@ -551,5 +551,5 @@ void loop() {
         printshow();
     // printdebug();
     // Serial.print("Hello World");
-    delay(50);
+    delay(25);
 }

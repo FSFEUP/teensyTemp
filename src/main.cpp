@@ -149,6 +149,8 @@ void readRawADCData() {
             newMaxTemp = max(newMaxTemp, Temps[adc][channel]);
             newMinTemp = min(newMinTemp, Temps[adc][channel]);
             newSumTemp += Temps[adc][channel];
+
+
         }
     }
 
@@ -530,6 +532,7 @@ void loop() {
     printshow();
     // printdebug();
 
+
     // delay(4);
 
     // Serial.println(loopTime);
@@ -542,3 +545,4 @@ void loop() {
 
     // Serial.println("loop");
 }
+

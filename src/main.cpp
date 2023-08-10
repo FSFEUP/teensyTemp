@@ -1,6 +1,7 @@
 #include <Adafruit_MCP3008.h>
 #include <FlexCAN_T4.h>
 #include <Wire.h>
+#include <elapsedMillis.h>
 
 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1;
 
@@ -15,6 +16,11 @@ Adafruit_MCP3008 ADCs[8];
 
 #define SLEEP_PERIOD_MS 50
 #define MAX_ERROR_CYCLES 14  // for a 50ms sleep period, this is 700ms
+
+#define MAX_ALOWED_TEMP 60
+#define MIN_ALOWED_TEMP 0
+
+#define MAVG_WINDOW_SIZE 8
 
 bool TempErr = 0;
 bool BMSErr = 0;
@@ -38,8 +44,6 @@ double temperature = 0.0;
 float maxTemp = 0.0;
 float minTemp = 60.0;
 float avgTemp = 0.0;
-
-#define MAVG_WINDOW_SIZE 8
 
 int ADCRaw[8][8] = {
     {0, 0, 0, 0, 0, 0, 0, 0},
@@ -125,15 +129,19 @@ void readRawADCData() {
         for (int channel = 0; channel < N_ADC_CHANNELS; channel++) {
             if (adc == 7 && channel > 3)  // these termistors do not exist
                 continue;
+            if (adc == 5 && channel == 7)  // this termistor is disconnected
+                continue;
+            if (adc == 4 && channel == 6)  // this termistor is disconnected
+                continue;
             if (adc == 3 && channel == 5)  // this termistor is disconnected
+                continue;
+            if (adc == 2 && channel == 6)  // this termistor is disconnected
                 continue;
             if (adc == 2 && channel == 2)  // this termistor is disconnected
                 continue;
-            if (adc == 4 && channel == 1)  // this termistor is disconnected
+            
+            if (adc == 0 && channel == 1)  // this termistor is disconnected
                 continue;
-            if (adc == 0 && channel == 1)
-                continue;
-
             bufferInsert(rawDataBuffer[adc][channel], ADCs[adc].readADC(channel));
             ADCRaw[adc][channel] = bufferAvg(rawDataBuffer[adc][channel]);
             Temps[adc][channel] = ADCconversion(ADCRaw[adc][channel]);
@@ -479,8 +487,6 @@ void printshow() {
 void setup() {
     // try to connect to the serial monitor
     Serial.begin(9600);
-    if (Serial)
-        Serial.println("Serial monitor connected");
 
     can1.begin();
     can1.setBaudRate(125000);
@@ -507,21 +513,32 @@ void setup() {
             }
         }
     }
+
+    delay(500);
 }
 
 void loop() {
-    uint32_t loopStartTime = millis();
+    // elapsedMillis loopTime;
+
+    // Serial.println(loopTime);
 
     readRawADCData();
-    temp2Handcart();
+    // temp2Handcart();
     temp2bms();
 
-    if (Serial) {
-        printshow();
-        // printdebug();
-    }
 
-    uint32_t loopTime = millis() - loopStartTime;
+    printshow();
+    // printdebug();
 
-    delay(SLEEP_PERIOD_MS - loopTime);  // Keep the loop frequency constant
+    // delay(4);
+
+    // Serial.println(loopTime);
+
+    // Serial.println(SLEEP_PERIOD_MS - loopTime);
+
+
+    // delay(SLEEP_PERIOD_MS - loopTime);  // Keep the loop frequency constant
+    delay(50);
+
+    // Serial.println("loop");
 }
